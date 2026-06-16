@@ -1,0 +1,10 @@
+programs:
+  pump_fun:
+    program_id: "6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P"
+    bonding_curve_seed: "bonding-curve"
+  moonshot:
+    program_id: "MoonGoerUrnL27Xh2V8Smt2RjXfK4r4g4b4k4m4p4q4r" # Moonshot program ID
+  raydium:
+    amm_v4: "675kPX9M4SG3Lx55Yk814x9L8Yn6VSowPDJH1YicPh2S"
+  token_program: "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+  associated_token_program: "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"

@@ -1,0 +1,67 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Distribution / packaging
+bin/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyTest / Unit test
+.pytest_cache/
+.nosexy
+.noscript
+.htmlcov/
+.tox/
+.noscript/
+.pytest_cache/
+nosetests.xml
+coverage.xml
+htmlcov/
+.execut/
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Solana / Web3 specific (Credentials and private keys)
+*.json
+!requirements.txt
+!package.json
+!tsconfig.json
+!jsconfig.json
+.anchor/
+target/
+deploy/
+*keypair*.json
+id.json
+
+# IDEs
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?

@@ -1,0 +1,29 @@
+rpc:
+  http_url: "https://api.mainnet-beta.solana.com"
+  ws_url: "wss://api.mainnet-beta.solana.com"
+  grpc_url: "" # e.g. yellowstone-grpc.helius-rpc.com:443 (Leave blank to fallback to WebSocket)
+  grpc_auth_token: ""
+
+security:
+  check_mint_authority: true
+  check_freeze_authority: true
+  max_dev_holder_concentration: 0.15  # Max 15% in single dev-related clusters
+  min_lp_burn_percent: 95.0
+  rugcheck_enabled: true
+  rugcheck_api_url: "https://api.rugcheck.xyz/v1"
+
+indicators:
+  ofi_window_size: 50             # Number of ticks for Order Flow Imbalance calculation
+  rsi_period: 14                  # Timeframe candles for RSI
+  bb_period: 20                   # Timeframe candles for Bollinger Bands
+  bb_std_dev: 2.0                 # Standard deviation for Bollinger Bands
+  macd_fast: 12
+  macd_slow: 26
+  macd_signal: 9
+
+execution:
+  enabled: false                   # Safe by default. Set true to enable atomic Jito submissions.
+  jito_block_engine_url: "https://mainnet.block-engine.jito.wtf"
+  jito_tip_account: "Cw8CFyM92ocnFYCHkuTFA3bCw58AgqESzb4C236qRBdB" # Random active Jito tip account
+  default_jito_tip_lamports: 1000000 # 0.001 SOL base tip
+  max_slippage_bps: 100           # 1% slippage limit
