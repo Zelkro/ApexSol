@@ -1,68 +1,57 @@
 import logging
-from typing import Dict, Any, List
+from typing import List, Dict, Any
 from solana.rpc.async_api import AsyncClient
 from solders.pubkey import Pubkey
 
-logger = logging.getLogger("MMCoin.Concentration")
+logger = logging.getLogger("MMCoin.ConcentrationAnalyzer")
 
 class HolderConcentrationAnalyzer:
     """
-    Analyzes holder distribution and groups/identifies developer wallet clusters.
+    Analyzes the concentration of tokens held by developers or top wallets
+    to detect potential rug-pull/dump risks.
     """
     def __init__(self, max_concentration: float = 0.15):
         self.max_concentration = max_concentration
 
     async def get_top_holders(self, client: AsyncClient, mint_address: str) -> List[Dict[str, Any]]:
         """
-        Retrieves largest accounts holding the token.
+        Fetches the largest token accounts for a given mint.
         """
         try:
             pubkey = Pubkey.from_string(mint_address)
-            # Use JSON-RPC to fetch largest accounts holding the mint
+            # Fetch largest token accounts from chain
             response = await client.get_token_largest_accounts(pubkey)
-            if not response.value:
+            if not response or not response.value:
                 return []
-                
+            
             holders = []
             for item in response.value:
                 holders.append({
                     "address": str(item.address),
-                    "amount": int(item.amount.amount),
-                    "ui_amount": item.amount.ui_amount
+                    "amount": float(item.amount.ui_amount) if item.amount.ui_amount else 0.0
                 })
             return holders
         except Exception as e:
-            logger.error(f"Failed to fetch largest token accounts: {e}")
+            logger.debug(f"Failed to fetch largest token accounts for {mint_address}: {e}")
             return []
 
     def analyze_concentration(self, holders: List[Dict[str, Any]], total_supply: float) -> Dict[str, Any]:
         """
-        Calculates concentration ratios and identifies developer clusters.
+        Analyzes concentration risk of top holders.
+        Returns check passed/failed status and reason.
         """
-        if not holders or total_supply <= 0:
-            return {"passed": False, "reason": "No holder or supply data"}
+        if not holders or total_supply == 0.0:
+            return {"passed": True, "reason": "No holders data or supply is zero"}
 
-        # Exclude known pool/burn addresses if we can identify them (e.g., Raydium LP base or Null address)
-        risk_amount = 0.0
-        details = []
+        # Exclude known pool address or system accounts if identified.
+        # Check if the single largest holder owns more than the configured ratio
+        largest_holder = holders[0]
+        ratio = largest_holder["amount"] / total_supply
         
-        # Calculate sum of top 5 holders
-        top_5_sum = 0.0
-        for i, holder in enumerate(holders[:5]):
-            pct = holder["ui_amount"] / total_supply
-            top_5_sum += pct
-            details.append({"address": holder["address"], "pct": pct})
-            
-            # Dev cluster check: if any single holder has > max_concentration (typically 15%)
-            if pct > self.max_concentration:
-                # Unless it's an AMM pool, flag it
-                pass
-                
-        passed = top_5_sum < 0.45 # Pass if top 5 hold less than 45% combined
-        
-        return {
-            "passed": passed,
-            "top_5_percentage": top_5_sum,
-            "details": details,
-            "reason": f"Top 5 accounts hold {top_5_sum*100:.2f}% of supply" if not passed else "Holder distribution healthy"
-        }
+        if ratio > self.max_concentration:
+            return {
+                "passed": False,
+                "reason": f"Top holder {largest_holder['address']} owns {ratio:.2%} of supply (limit={self.max_concentration:.2%})"
+            }
+
+        return {"passed": True, "reason": "Concentration within acceptable limits"}

@@ -1,4 +1,5 @@
-import base58
+# pyrefly: ignore [missing-import]
+import base64
 import aiohttp
 import logging
 from typing import List, Dict, Any, Optional
@@ -33,32 +34,47 @@ class JitoBundleClient:
 
     async def get_tip_recommendations(self) -> Dict[str, Any]:
         """
-        Fetches current Jito tip recommendations to dynamic tip adjustments.
+        Fetches current Jito tip recommendations for dynamic tip adjustments.
+        Queries the Jito Bundles Tip Floor API.
         """
-        url = f"{self.block_engine_url}/api/v1/tips"
+        url = "https://bundles.jito.wtf/api/v1/bundles/tip_floor"
         try:
             async with aiohttp.ClientSession() as session:
                 async with session.get(url) as resp:
                     if resp.status == 200:
-                        return await resp.json()
+                        data = await resp.json()
+                        # If data is a list, retrieve the first element
+                        if isinstance(data, list) and len(data) > 0:
+                            data = data[0]
+                        
+                        # Convert SOL percentiles to lamports (1 SOL = 1,000,000,000 lamports)
+                        recommendations = {}
+                        for k, v in data.items():
+                            if "percentile" in k and isinstance(v, (int, float)):
+                                recommendations[k] = int(v * 1_000_000_000)
+                        return recommendations
         except Exception as e:
             logger.error(f"Failed fetching Jito tips recommendations: {e}")
         return {}
+
 
     async def send_bundle(self, transactions: List[VersionedTransaction]) -> Optional[str]:
         """
         Sends an array of transactions as a Jito bundle.
         """
-        # Serialize versioned transactions to base58 or base64 strings
+        # Serialize versioned transactions to base64 strings (faster and recommended by Jito)
         serialized_txs = []
         for tx in transactions:
-            serialized_txs.append(base58.b58encode(bytes(tx)).decode("utf-8"))
+            serialized_txs.append(base64.b64encode(bytes(tx)).decode("utf-8"))
 
         payload = {
             "jsonrpc": "2.0",
             "id": 1,
             "method": "sendBundle",
-            "params": [serialized_txs]
+            "params": [
+                serialized_txs,
+                {"encoding": "base64"}
+            ]
         }
 
         url = f"{self.block_engine_url}/api/v1/bundles"

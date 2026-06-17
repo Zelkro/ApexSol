@@ -1,72 +1,83 @@
-import polars as pl
-from typing import Dict, Any, Tuple, Optional
+import collections
+import math
+from typing import Tuple, Optional
 
-class TechnicalIndicators:
+class O1BollingerBands:
     """
-    Computes rapid high-volatility technical indicators using Polars expressions.
+    Stateful O(1) calculator for Bollinger Bands.
     """
-    
-    @staticmethod
-    def calculate_rsi(prices: pl.Series, period: int = 14) -> Optional[float]:
-        """
-        Calculates Relative Strength Index (RSI).
-        """
-        if len(prices) < period + 1:
+    def __init__(self, period: int = 20, num_std: float = 2.0):
+        self.period = period
+        self.num_std = num_std
+        self.prices = collections.deque()
+        self.sum_x = 0.0
+        self.sum_x2 = 0.0
+
+    def update(self, price: float) -> Optional[Tuple[float, float, float]]:
+        if len(self.prices) == self.period:
+            old_p = self.prices.popleft()
+            self.sum_x -= old_p
+            self.sum_x2 -= old_p ** 2
+
+        self.prices.append(price)
+        self.sum_x += price
+        self.sum_x2 += price ** 2
+
+        if len(self.prices) < self.period:
             return None
-            
-        # Compute differences
-        diffs = prices.diff().slice(1)
+
+        mu = self.sum_x / self.period
+        variance = (self.sum_x2 / self.period) - (mu ** 2)
+        std_dev = math.sqrt(max(0.0, variance))
+
+        lower = mu - (self.num_std * std_dev)
+        upper = mu + (self.num_std * std_dev)
+        return lower, mu, upper
+
+
+class O1RSI:
+    """
+    Stateful O(1) calculator for Relative Strength Index (RSI) using Wilder's smoothed MA.
+    """
+    def __init__(self, period: int = 14):
+        self.period = period
+        self.last_price = None
+        self.gains_history = collections.deque(maxlen=period)
+        self.losses_history = collections.deque(maxlen=period)
+        self.avg_gain = None
+        self.avg_loss = None
+        self.count = 0
+
+    def update(self, price: float) -> Optional[float]:
+        if self.last_price is None:
+            self.last_price = price
+            return None
+
+        diff = price - self.last_price
+        self.last_price = price
+
+        gain = max(0.0, diff)
+        loss = max(0.0, -diff)
+
+        self.count += 1
+
+        if self.count < self.period:
+            self.gains_history.append(gain)
+            self.losses_history.append(loss)
+            return None
         
-        # Extract gains and losses
-        gains = diffs.map_elements(lambda x: x if x > 0 else 0.0, return_dtype=pl.Float64)
-        losses = diffs.map_elements(lambda x: -x if x < 0 else 0.0, return_dtype=pl.Float64)
-        
-        # Calculate Wilder's MA
-        avg_gain = gains.slice(0, period).mean()
-        avg_loss = losses.slice(0, period).mean()
-        
-        if avg_loss == 0:
+        elif self.count == self.period:
+            self.gains_history.append(gain)
+            self.losses_history.append(loss)
+            self.avg_gain = sum(self.gains_history) / self.period
+            self.avg_loss = sum(self.losses_history) / self.period
+        else:
+            # Wilder's smoothing EMA formula:
+            self.avg_gain = (self.avg_gain * (self.period - 1) + gain) / self.period
+            self.avg_loss = (self.avg_loss * (self.period - 1) + loss) / self.period
+
+        if self.avg_loss == 0.0:
             return 100.0
-            
-        for i in range(period, len(diffs)):
-            avg_gain = (avg_gain * (period - 1) + gains[i]) / period
-            avg_loss = (avg_loss * (period - 1) + losses[i]) / period
-            
-        rs = avg_gain / avg_loss if avg_loss != 0 else 0
+
+        rs = self.avg_gain / self.avg_loss
         return 100.0 - (100.0 / (1.0 + rs))
-
-    @staticmethod
-    def calculate_bollinger_bands(prices: pl.Series, period: int = 20, num_std: float = 2.0) -> Optional[Tuple[float, float, float]]:
-        """
-        Calculates Middle, Upper, and Lower Bollinger Bands.
-        Returns: (lower_band, middle_band, upper_band)
-        """
-        if len(prices) < period:
-            return None
-            
-        window = prices.slice(len(prices) - period, period)
-        middle_band = float(window.mean())
-        std_dev = float(window.std())
-        
-        upper_band = middle_band + (num_std * std_dev)
-        lower_band = middle_band - (num_std * std_dev)
-        
-        return lower_band, middle_band, upper_band
-
-    @staticmethod
-    def calculate_macd(prices: pl.Series, fast: int = 12, slow: int = 26, signal: int = 9) -> Optional[Tuple[float, float, float]]:
-        """
-        Calculates MACD, Signal line, and Histogram.
-        """
-        if len(prices) < slow + signal:
-            return None
-            
-        # Fast/Slow EMAs
-        ema_fast = prices.ewm_mean(span=fast, adjust=False)
-        ema_slow = prices.ewm_mean(span=slow, adjust=False)
-        
-        macd_line = ema_fast - ema_slow
-        signal_line = macd_line.ewm_mean(span=signal, adjust=False)
-        macd_histogram = macd_line - signal_line
-        
-        return float(macd_line[-1]), float(signal_line[-1]), float(macd_histogram[-1])

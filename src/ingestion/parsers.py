@@ -1,6 +1,7 @@
 import base64
 import struct
 from typing import Dict, Any, Optional
+from solders.pubkey import Pubkey
 
 class PumpFunParser:
     """
@@ -73,11 +74,11 @@ class PumpFunParser:
                     
                     return {
                         "event_type": "trade",
-                        "mint": base64.b58encode(mint).decode() if hasattr(base64, 'b58encode') else mint.hex(),
+                        "mint": str(Pubkey.from_bytes(mint)),
                         "sol_amount": sol_amount,
                         "token_amount": token_amount,
                         "is_buy": is_buy,
-                        "user": base64.b58encode(user).decode() if hasattr(base64, 'b58encode') else user.hex(),
+                        "user": str(Pubkey.from_bytes(user)),
                         "timestamp": timestamp,
                         "platform": "pump.fun"
                     }

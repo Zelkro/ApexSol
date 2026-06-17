@@ -1,56 +1,47 @@
 import logging
-from typing import Dict, Any, Optional
+from typing import List, Optional
 from solana.rpc.async_api import AsyncClient
-from solders.transaction import VersionedTransaction
+from src.config.settings import settings
 
-logger = logging.getLogger("MMCoin.Fees")
+logger = logging.getLogger("MMCoin.FeeManager")
 
 class FeeManager:
     """
-    Handles dynamic priority fee calculation and simulation safety gates.
+    Computes priority fees dynamically depending on configured strategy (fixed, percentile, adaptive).
     """
     def __init__(self, max_fee_lamports: int = 5_000_000):
         self.max_fee_lamports = max_fee_lamports
 
-    async def estimate_priority_fee(self, client: AsyncClient, addresses: list) -> int:
-        """
-        Queries the Solana node for recent prioritization fees for specific accounts.
-        """
+    async def estimate_priority_fee(self, client: AsyncClient, addresses: List[str]) -> int:
+        strategy = settings.priority_fee_strategy
+        
+        if strategy == "fixed":
+            return 10_000  # Default base micro-lamports priority fee
+            
         try:
-            # Fetch recent priorization fees for target accounts (e.g. Pump.fun program, LP)
+            # Query recent prioritization fees for specified accounts on chain
             response = await client.get_recent_prioritization_fees(addresses)
-            if not response.value:
-                return 10_000 # Default fallback base micro-lamports priority fee
+            if not response or not response.value:
+                return 10_000
                 
-            # Compute percentile-based fee to ensure top block placement
             fees = [item.prioritization_fee for item in response.value]
             if not fees:
                 return 10_000
                 
             fees.sort()
-            # Select 75th percentile fee
-            idx = int(len(fees) * 0.75)
-            estimated = fees[idx]
             
-            # Cap the maximum safety fee
+            if strategy == "percentile":
+                # Take the 75th percentile to ensure fast slot placement
+                idx = int(len(fees) * 0.75)
+                estimated = fees[idx]
+            elif strategy == "adaptive":
+                # Take 95th percentile under heavy congestion
+                idx = int(len(fees) * 0.95)
+                estimated = fees[idx]
+            else:
+                estimated = 10_000
+                
             return min(estimated, self.max_fee_lamports)
         except Exception as e:
-            logger.error(f"Failed to estimate priority fee: {e}")
+            logger.debug(f"Failed to query prioritization fees: {e}. Falling back to 10000.")
             return 10_000
-
-    async def simulate_and_validate(self, client: AsyncClient, tx: VersionedTransaction) -> bool:
-        """
-        Simulates the transaction on-chain prior to dispatch.
-        Aborts execution if pre-simulation fails or flags errors.
-        """
-        try:
-            sim_resp = await client.simulate_transaction(tx)
-            if sim_resp.value.err:
-                logger.error(f"Pre-simulation failed: {sim_resp.value.err}")
-                return False
-                
-            logger.info("Pre-simulation passed successfully.")
-            return True
-        except Exception as e:
-            logger.error(f"Failed simulating transaction: {e}")
-            return False

@@ -1,7 +1,11 @@
 import struct
-from typing import Optional, Dict
+import logging
+from typing import Dict, Any, Optional
 from solana.rpc.async_api import AsyncClient
 from solders.pubkey import Pubkey
+from solders.transaction import VersionedTransaction
+
+logger = logging.getLogger("MMCoin.AuthorityValidator")
 
 class AuthorityValidator:
     """
@@ -9,13 +13,6 @@ class AuthorityValidator:
     - Mint Authority must be revoked (None/Null).
     - Freeze Authority must be disabled (None/Null).
     """
-    
-    # SPL Token Mint Layout:
-    # Option<Pubkey> (4 + 32 bytes) -> mint_authority
-    # u64 (8 bytes) -> supply
-    # u8 (1 byte) -> decimals
-    # bool (1 byte) -> is_initialized
-    # Option<Pubkey> (4 + 32 bytes) -> freeze_authority
     MINT_LAYOUT_SIZE = 82
 
     @staticmethod
@@ -23,8 +20,6 @@ class AuthorityValidator:
         """
         Parses SPL Token Mint account raw data.
         """
-        # Option<Pubkey> structure in Rust/Borsh serialization:
-        # 4 bytes tag (0 = None, 1 = Some), followed by 32 bytes Pubkey if Some.
         mint_auth = None
         offset = 0
         
@@ -34,7 +29,7 @@ class AuthorityValidator:
             mint_auth = Pubkey(data[offset:offset+32])
             offset += 32
         else:
-            offset += 32 # Skip anyway if fixed padding
+            offset += 32
             
         supply = struct.unpack("<Q", data[offset:offset+8])[0]
         offset += 8
@@ -63,7 +58,7 @@ class AuthorityValidator:
         try:
             pubkey = Pubkey.from_string(mint_address)
             resp = await client.get_account_info(pubkey)
-            if not resp.value:
+            if not resp or not resp.value:
                 return False
                 
             data = resp.value.data
@@ -71,9 +66,65 @@ class AuthorityValidator:
                 return False
                 
             parsed = self.parse_mint_info(data)
-            
-            # Risk condition: Must have both revoked/disabled for complete safety.
             safe = (parsed["mint_authority"] is None) and (parsed["freeze_authority"] is None)
             return safe
+        except Exception as e:
+            logger.debug(f"RPC Authority validation failed for {mint_address}: {e}")
+            return False
+
+    def verify_authorities_in_memory(self, tx_data: bytes) -> bool:
+        """
+        Deserializes a transaction locally and checks SPL Token instructions
+        to see if MintAuthority and FreezeAuthority are revoked/None.
+        """
+        try:
+            tx = VersionedTransaction.from_bytes(tx_data)
+            message = tx.message
+            
+            token_program_id = Pubkey.from_string("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA")
+            account_keys = message.account_keys
+            if token_program_id not in account_keys:
+                return False
+                
+            token_program_index = account_keys.index(token_program_id)
+            
+            mint_auth_revoked = False
+            freeze_auth_revoked = False
+            initialized_mint = False
+            
+            for instruction in message.instructions:
+                if instruction.program_id_index != token_program_index:
+                    continue
+                    
+                data = instruction.data
+                if not data:
+                    continue
+                    
+                inst_type = data[0]
+                
+                # 0 = InitializeMint, 20 = InitializeMint2
+                if inst_type in (0, 20):
+                    initialized_mint = True
+                    if len(data) >= 35:
+                        freeze_option_idx = 34
+                        freeze_auth_option = data[freeze_option_idx]
+                        if freeze_auth_option == 0:
+                            freeze_auth_revoked = True
+                
+                # 6 = SetAuthority
+                elif inst_type == 6:
+                    if len(data) >= 3:
+                        auth_type = data[1]
+                        new_auth_option = data[2]
+                        
+                        if auth_type == 0 and new_auth_option == 0:
+                            mint_auth_revoked = True
+                        elif auth_type == 1 and new_auth_option == 0:
+                            freeze_auth_revoked = True
+                            
+            if initialized_mint:
+                return mint_auth_revoked and freeze_auth_revoked
+            
+            return mint_auth_revoked and freeze_auth_revoked
         except Exception:
             return False
