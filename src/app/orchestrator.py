@@ -20,7 +20,7 @@ from src.risk.guards import risk_guards
 from src.observability.metrics import metrics
 from src.app.lifecycle import LifecycleManager
 
-logger = logging.getLogger("MMCoin.Orchestrator")
+logger = logging.getLogger("ApexSol.Orchestrator")
 
 class PipelineOrchestrator:
     """
@@ -59,7 +59,7 @@ class PipelineOrchestrator:
         self._lifecycle_manager: Optional[LifecycleManager] = None
 
     async def start(self):
-        logger.info("Initializing MMCoin trading orchestrator...")
+        logger.info("Initializing ApexSol trading orchestrator...")
         
         # Start state store TTL worker
         await self.token_store.start()
@@ -82,7 +82,7 @@ class PipelineOrchestrator:
                 self.rpc_client.close
             ]
         )
-        logger.info("MMCoin orchestrator fully initialized.")
+        logger.info("ApexSol orchestrator fully initialized.")
 
     async def stop(self):
         if self._lifecycle_manager:

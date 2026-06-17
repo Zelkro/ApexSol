@@ -3,7 +3,7 @@ import logging
 from typing import Dict, Any
 from src.config.settings import settings
 
-logger = logging.getLogger("MMCoin.RiskGuards")
+logger = logging.getLogger("ApexSol.RiskGuards")
 
 class RiskGuards:
     """

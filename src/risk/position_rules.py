@@ -1,7 +1,7 @@
 import logging
 from typing import Dict, Any
 
-logger = logging.getLogger("MMCoin.PositionRules")
+logger = logging.getLogger("ApexSol.PositionRules")
 
 class PositionRules:
     """

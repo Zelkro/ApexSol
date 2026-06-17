@@ -6,7 +6,7 @@ from src.ingestion.models import AuditVerdict
 from src.security.authority import AuthorityValidator
 from src.security.concentration import HolderConcentrationAnalyzer
 
-logger = logging.getLogger("MMCoin.SecurityAuditor")
+logger = logging.getLogger("ApexSol.SecurityAuditor")
 
 class SecurityAuditor:
     """

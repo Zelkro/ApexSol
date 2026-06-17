@@ -3,7 +3,7 @@ from typing import List, Dict, Any
 from solana.rpc.async_api import AsyncClient
 from solders.pubkey import Pubkey
 
-logger = logging.getLogger("MMCoin.ConcentrationAnalyzer")
+logger = logging.getLogger("ApexSol.ConcentrationAnalyzer")
 
 class HolderConcentrationAnalyzer:
     """

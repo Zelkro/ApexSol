@@ -9,7 +9,7 @@ from src.app.orchestrator import PipelineOrchestrator
 logger = setup_logging()
 
 async def main():
-    logger.info("Initializing MMCoin (ApexSol) Low-Latency Solana Pipeline...")
+    logger.info("Initializing ApexSol Low-Latency Solana Pipeline...")
     
     orchestrator = PipelineOrchestrator()
     

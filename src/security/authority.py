@@ -5,7 +5,7 @@ from solana.rpc.async_api import AsyncClient
 from solders.pubkey import Pubkey
 from solders.transaction import VersionedTransaction
 
-logger = logging.getLogger("MMCoin.AuthorityValidator")
+logger = logging.getLogger("ApexSol.AuthorityValidator")
 
 class AuthorityValidator:
     """

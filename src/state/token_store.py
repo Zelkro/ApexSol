@@ -4,7 +4,7 @@ import logging
 from typing import Dict, Optional, List
 from src.ingestion.models import TokenState, AuditVerdict
 
-logger = logging.getLogger("MMCoin.TokenStore")
+logger = logging.getLogger("ApexSol.TokenStore")
 
 class TokenStore:
     """

@@ -26,7 +26,7 @@ class JsonFormatter(logging.Formatter):
         return json.dumps(log_data)
 
 def setup_logging(level: str = "INFO"):
-    logger = logging.getLogger("MMCoin")
+    logger = logging.getLogger("ApexSol")
     logger.setLevel(level)
     
     # Avoid duplicate handlers

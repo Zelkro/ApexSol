@@ -1,4 +1,4 @@
-# MMCoin: Low-Latency Solana Algorithmic Pipeline
+# ApexSol: Low-Latency Solana Algorithmic Pipeline
 
 A modular, production-grade Python algorithmic trading pipeline designed for Solana and targeting pump.fun, using Yellowstone gRPC (Geyser) for ingestion and Jito for MEV-resistant bundle execution.
 
