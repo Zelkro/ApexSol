@@ -1,7 +1,7 @@
 import logging
 import sys
 
-def setup_logger(name: str = "MMCoin") -> logging.Logger:
+def setup_logger(name: str = "ApexSol") -> logging.Logger:
     logger = logging.getLogger(name)
     logger.setLevel(logging.INFO)
     
