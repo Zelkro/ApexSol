@@ -1,6 +1,7 @@
 import asyncio
 import time
 import logging
+import uuid
 from typing import Dict, Any, Optional
 
 from solana.rpc.async_api import AsyncClient
@@ -8,7 +9,7 @@ from src.config.settings import settings
 from src.ingestion.grpc_client import YellowstoneGRPCClient
 from src.ingestion.subscription import GeyserSubscriptionBuilder
 from src.ingestion.parser_pumpfun import PumpFunParser
-from src.ingestion.models import RawStreamEvent, ParsedTradeEvent, TokenCreationEvent, ExecutionIntent, AuditVerdict
+from src.ingestion.models import RawStreamEvent, ParsedTradeEvent, TokenCreationEvent, ExecutionIntent, AuditVerdict, TokenState
 from src.security.audit import SecurityAuditor
 from src.state.token_store import TokenStore
 from src.engine.features import FeatureEngine
