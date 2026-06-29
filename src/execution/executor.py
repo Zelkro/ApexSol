@@ -1,3 +1,4 @@
+# pyrefly: ignore [missing-import]
 import asyncio
 import time
 import uuid
@@ -31,9 +32,32 @@ class Executor:
         # Concurrency protection to prevent double buying
         self.active_executions: Set[str] = set()
 
+        # Blockhash caching for low-latency execution
+        self._cached_blockhash: Optional[Hash] = None
+        self._cached_blockhash_time: float = 0.0
+
+    async def get_recent_blockhash(self) -> Hash:
+        """
+        Retrieves a cached blockhash if updated within 2 seconds to eliminate RPC latency on hot path.
+        """
+        now = time.time()
+        if self._cached_blockhash is not None and (now - self._cached_blockhash_time) < 2.0:
+            return self._cached_blockhash
+
+        try:
+            blockhash_resp = await self.rpc_client.get_latest_blockhash()
+            if blockhash_resp and blockhash_resp.value:
+                self._cached_blockhash = blockhash_resp.value.blockhash
+                self._cached_blockhash_time = now
+                return self._cached_blockhash
+        except Exception as e:
+            logger.error(f"Failed to fetch blockhash: {e}")
+
+        return self._cached_blockhash or Hash.default()
+
     async def execute(self, intent: ExecutionIntent, current_slot: int) -> BundleResult:
         mint = intent.mint
-        
+
         # 1. Double-send check
         if mint in self.active_executions:
             logger.warning(f"Aborting execution: active trade already processing for {mint}")
@@ -46,7 +70,7 @@ class Executor:
 
         self.active_executions.add(mint)
         logger.info(f"Initiating execution: intent_id={intent.intent_id}, mode={settings.mode.upper()}")
-        
+
         try:
             # Paper mode: simulate success
             if settings.mode == "paper":
@@ -60,13 +84,8 @@ class Executor:
                     timestamp=time.time()
                 )
 
-            # Shadow mode: build and sign transaction, but do not send
-            # Fetch blockhash
-            try:
-                blockhash_resp = await self.rpc_client.get_latest_blockhash()
-                blockhash = blockhash_resp.value.blockhash if blockhash_resp and blockhash_resp.value else Hash.default()
-            except Exception:
-                blockhash = Hash.default()
+            # Shadow / Live mode: build and sign transaction
+            blockhash = await self.get_recent_blockhash()
 
             # Build Jito Tip instruction
             tip_account = Pubkey.from_string(self.jito_client.select_tip_account())

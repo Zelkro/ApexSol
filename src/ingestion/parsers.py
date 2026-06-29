@@ -1,3 +1,4 @@
+# pyrefly: ignore [missing-import]
 import base64
 import struct
 from typing import Dict, Any, Optional

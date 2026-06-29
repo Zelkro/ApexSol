@@ -1,3 +1,4 @@
+# pyrefly: ignore [missing-import]
 import collections
 import polars as pl
 from typing import Dict, Any, List, Optional

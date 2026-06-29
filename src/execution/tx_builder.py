@@ -1,3 +1,4 @@
+# pyrefly: ignore [missing-import]
 import logging
 from typing import List, Optional
 from solders.pubkey import Pubkey

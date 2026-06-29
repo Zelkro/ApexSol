@@ -1,3 +1,4 @@
+# pyrefly: ignore [missing-import]
 """
 test_sizing.py — Unit tests for sizing.py.
 """

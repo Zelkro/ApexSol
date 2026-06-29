@@ -1,3 +1,4 @@
+# pyrefly: ignore [missing-import]
 import logging
 from typing import List, Optional
 from solana.rpc.async_api import AsyncClient

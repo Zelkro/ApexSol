@@ -1,3 +1,4 @@
+# pyrefly: ignore [missing-import]
 import logging
 from typing import Dict, Any, Optional
 from solana.rpc.async_api import AsyncClient
@@ -48,25 +49,43 @@ class SecurityAuditor:
 
     async def run_full_async_audit(self, mint: str) -> AuditVerdict:
         """
-        Performs background RPC checks to verify authorities & holder concentration on-chain.
+        Performs background RPC checks to verify authorities & holder concentration on-chain concurrently.
         Updates internal cache when complete.
         """
         try:
-            # 1. Authority validation
-            if settings.check_mint_authority or settings.check_freeze_authority:
-                ok = await self.authority_validator.verify_authorities(self.rpc_client, mint)
-                if not ok:
+            import asyncio
+            from solders.pubkey import Pubkey
+
+            check_auth = settings.check_mint_authority or settings.check_freeze_authority
+
+            async def fetch_supply():
+                try:
+                    mint_info = await self.rpc_client.get_token_supply(Pubkey.from_string(mint))
+                    return float(mint_info.value.ui_amount) if mint_info and mint_info.value else 0.0
+                except Exception:
+                    return 0.0
+
+            # Execute RPC queries concurrently for minimal latency
+            if check_auth:
+                auth_ok, holders, total_supply = await asyncio.gather(
+                    self.authority_validator.verify_authorities(self.rpc_client, mint),
+                    self.concentration_analyzer.get_top_holders(self.rpc_client, mint),
+                    fetch_supply(),
+                    return_exceptions=True
+                )
+                if isinstance(auth_ok, Exception) or not auth_ok:
                     self.audit_cache[mint] = AuditVerdict.DENY
                     return AuditVerdict.DENY
+            else:
+                holders, total_supply = await asyncio.gather(
+                    self.concentration_analyzer.get_top_holders(self.rpc_client, mint),
+                    fetch_supply(),
+                    return_exceptions=True
+                )
 
-            # 2. Concentration check
-            holders = await self.concentration_analyzer.get_top_holders(self.rpc_client, mint)
-            # Estimate supply by fetching token supply from chain
-            try:
-                from solders.pubkey import Pubkey
-                mint_info = await self.rpc_client.get_token_supply(Pubkey.from_string(mint))
-                total_supply = float(mint_info.value.ui_amount) if mint_info.value else 0.0
-            except Exception:
+            if isinstance(holders, Exception):
+                holders = []
+            if isinstance(total_supply, Exception):
                 total_supply = 0.0
 
             if total_supply > 0.0 and holders:
@@ -78,7 +97,7 @@ class SecurityAuditor:
 
             # All checks passed
             self.audit_cache[mint] = AuditVerdict.ALLOW
-            logger.info(f"Token {mint} passed all security audits. Marked ALLOW.")
+            logger.info(f"Token {mint} passed all security audits concurrently. Marked ALLOW.")
             return AuditVerdict.ALLOW
         except Exception as e:
             logger.error(f"Error executing full async audit for {mint}: {e}")

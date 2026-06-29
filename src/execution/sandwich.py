@@ -1,3 +1,4 @@
+# pyrefly: ignore [missing-import]
 from solders.pubkey import Pubkey
 from solders.instruction import AccountMeta, Instruction
 

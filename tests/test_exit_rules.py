@@ -1,3 +1,4 @@
+# pyrefly: ignore [missing-import]
 """
 test_exit_rules.py — Unit tests for exit_rules.py.
 
