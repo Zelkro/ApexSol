@@ -7,7 +7,7 @@ class AuditVerdict(Enum):
     DENY = "DENY"
     PENDING = "PENDING"
 
-@dataclass
+@dataclass(slots=True)
 class RawStreamEvent:
     event_id: str
     slot: int
@@ -16,7 +16,7 @@ class RawStreamEvent:
     received_at: float
     provenance: str  # e.g., "yellowstone" or "fallback_ws"
 
-@dataclass
+@dataclass(slots=True)
 class ParsedTradeEvent:
     event_id: str
     slot: int
@@ -29,7 +29,7 @@ class ParsedTradeEvent:
     received_at: float
     provenance: str = "pump.fun"
 
-@dataclass
+@dataclass(slots=True)
 class TokenCreationEvent:
     event_id: str
     slot: int
@@ -43,7 +43,7 @@ class TokenCreationEvent:
     received_at: float
     provenance: str = "pump.fun"
 
-@dataclass
+@dataclass(slots=True)
 class TokenState:
     mint: str
     first_seen_at: float
@@ -66,7 +66,7 @@ class TokenState:
     last_signal: Optional[str] = None
     stale: bool = False
 
-@dataclass
+@dataclass(slots=True)
 class SignalEvent:
     event_id: str
     mint: str
@@ -76,7 +76,7 @@ class SignalEvent:
     slot: int
     timestamp: float
 
-@dataclass
+@dataclass(slots=True)
 class ExecutionIntent:
     intent_id: str
     mint: str
@@ -86,7 +86,7 @@ class ExecutionIntent:
     max_slippage_bps: int
     timestamp: float
 
-@dataclass
+@dataclass(slots=True)
 class BundleResult:
     bundle_id: str
     status: str  # "landed", "failed", or "timeout"
